@@ -1,37 +1,55 @@
-import { createClient } from "@supabase/supabase-js";
 import type { ScoreEntry, LeaderboardEntry, Bowler } from "./constants";
 import { BOWLERS } from "./constants";
 
-function getClient() {
-  return createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!
-  );
+function headers() {
+  const key = process.env.SUPABASE_ANON_KEY!;
+  return {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/json",
+  };
+}
+
+function url(path: string) {
+  return `${process.env.SUPABASE_URL}/rest/v1/${path}`;
 }
 
 export async function appendScores(entries: ScoreEntry[]): Promise<void> {
-  const supabase = getClient();
-  const { error } = await supabase.from("scores").insert(
-    entries.map((e) => ({
-      date: e.date,
-      alley: e.alley,
-      bowler: e.bowler,
-      game_number: e.gameNumber,
-      score: e.score,
-    }))
-  );
-  if (error) throw error;
+  const res = await fetch(url("scores"), {
+    method: "POST",
+    headers: { ...headers(), Prefer: "return=minimal" },
+    body: JSON.stringify(
+      entries.map((e) => ({
+        date: e.date,
+        alley: e.alley,
+        bowler: e.bowler,
+        game_number: e.gameNumber,
+        score: e.score,
+      }))
+    ),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Supabase insert failed: ${text}`);
+  }
 }
 
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
-  const supabase = getClient();
-  const { data, error } = await supabase.from("scores").select("bowler, score");
-  if (error) throw error;
+  const res = await fetch(url("scores?select=bowler,score"), {
+    headers: headers(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Supabase select failed: ${text}`);
+  }
+
+  const rows: { bowler: string; score: number }[] = await res.json();
 
   const scoresByBowler: Record<string, number[]> = Object.fromEntries(
     BOWLERS.map((b) => [b, []])
   );
-  for (const row of data ?? []) {
+  for (const row of rows) {
     scoresByBowler[row.bowler]?.push(row.score);
   }
 
