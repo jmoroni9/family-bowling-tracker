@@ -69,10 +69,10 @@ export default function BowlingApp() {
               backgroundClip: "text",
             }}
           >
-            Family Bowling
+            Moroni Family
           </span>
           <br />
-          <span className="text-white">Tracker</span>
+          <span className="text-white">Bowling Scores</span>
         </h1>
         <p className="text-white/40 text-sm font-semibold uppercase tracking-[0.2em]">
           Reese · Brea · Kason · Whitley
